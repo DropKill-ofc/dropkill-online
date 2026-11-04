@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>DropKILL • Admin</title>
+<style>
+:root{color-scheme:dark;--bg:#090d14;--panel:#111a27;--line:#243247;--text:#eaf1ff;--muted:#91a2bc;--red:#ff465d;--blue:#4b8cff;--green:#42d392}
+*{box-sizing:border-box}body{margin:0;background:radial-gradient(circle at 80% 0,#172844 0,transparent 35%),var(--bg);color:var(--text);font:15px system-ui,Segoe UI,Arial}
+header{display:flex;align-items:center;justify-content:space-between;padding:18px 5%;border-bottom:1px solid var(--line);background:#0a101be8;position:sticky;top:0}
+.brand{font-weight:900;letter-spacing:2px}.brand span{color:var(--red)}.tag{font-size:11px;color:var(--muted);border:1px solid var(--line);padding:6px 9px;border-radius:20px}
+main{max-width:1200px;margin:30px auto;padding:0 18px}.hero{display:flex;justify-content:space-between;align-items:end;margin-bottom:22px}.hero h1{margin:0;font-size:clamp(25px,5vw,38px)}.hero p{color:var(--muted);margin:7px 0 0}
+.stats{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:18px}.stat,.panel{background:linear-gradient(145deg,#131e2d,#0f1722);border:1px solid var(--line);border-radius:14px;padding:17px}.stat small{color:var(--muted)}.stat strong{display:block;font-size:28px;margin-top:8px}
+.panel h2{font-size:17px;margin:0 0 15px}.tools{display:flex;gap:9px;flex-wrap:wrap;margin-bottom:13px}
+input,select,textarea{background:#0a111b;color:var(--text);border:1px solid #2a3a50;border-radius:9px;padding:11px;font:inherit;outline:none}input:focus,select:focus,textarea:focus{border-color:var(--blue)}#search{flex:1;min-width:180px}
+button{border:0;border-radius:9px;padding:11px 15px;font-weight:700;cursor:pointer;background:var(--blue);color:white}button.secondary{background:#202d40;border:1px solid #33445c}button.danger{background:#a91f37}
+.tablewrap{overflow:auto}table{width:100%;border-collapse:collapse;min-width:650px}th,td{text-align:left;padding:13px 10px;border-bottom:1px solid #243247}th{color:var(--muted);font-size:12px;text-transform:uppercase;letter-spacing:.7px}td{font-size:14px}.pill{padding:4px 8px;border-radius:20px;background:#193a2d;color:#6ce6ae;font-size:12px}.empty{text-align:center;color:var(--muted);padding:28px}
+#login{max-width:420px;margin:70px auto;padding:24px}#login h1{margin-top:0}#login input{width:100%;margin:8px 0 12px}#app{display:none}
+.note{color:#aebdd1;font-size:12px;line-height:1.5;margin-top:14px}
+.modal{display:none;position:fixed;inset:0;background:#000a;align-items:center;justify-content:center;padding:16px}.modal .panel{width:min(450px,100%)}.modal textarea{width:100%;min-height:90px;margin:8px 0}.modal select{width:100%;margin:8px 0}.actions{display:flex;gap:8px;justify-content:flex-end;margin-top:15px}
+@media(max-width:600px){.stats{grid-template-columns:1fr}.hero{align-items:start;gap:10px;flex-direction:column}header{padding:15px 18px}}
+</style>
+</head>
+<body>
+<header><div class="brand">DROP<span>KILL</span> <small style="color:#91a2bc">/ ADMIN</small></div><span class="tag">PAINEL PRIVADO • BETA</span></header>
+<main>
+<section id="login" class="panel">
+<h1>Área administrativa</h1><p style="color:var(--muted)">Acesso restrito à equipe autorizada.</p>
+<label for="pass">Senha administrativa</label><input id="pass" type="password" autocomplete="current-password" placeholder="Digite sua senha">
+<button id="loginBtn" style="width:100%">Entrar com segurança</button><p id="loginMsg" class="note"></p>
+<p class="note">Este HTML sozinho não protege o painel. O login real depende das rotas seguras do servidor.</p>
+</section>
+<section id="app">
+<div class="hero"><div><h1>Central de controle</h1><p>Gerencie contas, punições e atividade do DropKILL.</p></div><button class="secondary" id="logout">Sair</button></div>
+<div class="stats"><div class="stat"><small>CONTAS REGISTRADAS</small><strong id="total">—</strong></div><div class="stat"><small>JOGADORES ONLINE</small><strong id="online">—</strong></div><div class="stat"><small>CONTAS BANIDAS</small><strong id="banned">—</strong></div></div>
+<div class="panel"><h2>Contas de jogadores</h2><div class="tools"><input id="search" placeholder="Buscar por nome ou ID…"><button class="secondary" id="refresh">Atualizar</button></div>
+<div class="tablewrap"><table><thead><tr><th>ID</th><th>Jogador</th><th>Criada em</th><th>Patente</th><th>Status</th><th>Ação</th></tr></thead><tbody id="rows"><tr><td colspan="6" class="empty">Faça login para carregar os dados.</td></tr></tbody></table></div>
+<p class="note">Rank aparece como “—” até o servidor fornecer esse dado. Nenhuma ação é simulada neste painel.</p></div>
+</section>
+</main>
+<div class="modal" id="banModal"><div class="panel"><h2 id="banTitle">Punir jogador</h2><div id="target"></div><select id="duration"><option value="1h">1 hora</option><option value="24h">24 horas</option><option value="7d">7 dias</option><option value="30d">30 dias</option><option value="permanent">Permanente</option></select><textarea id="reason" placeholder="Motivo obrigatório da punição"></textarea><div class="actions"><button class="secondary" id="cancel">Cancelar</button><button class="danger" id="confirmBan">Aplicar ban</button></div></div></div>
+<script>
+let accounts=[],selected=null,token=null;
+const $=id=>document.getElementById(id);
+async function api(path,opts={}){opts.headers={...(opts.headers||{}),'Content-Type':'application/json'};const r=await fetch('/admin/api/'+path,{...opts,credentials:'same-origin'});let d={};try{d=await r.json()}catch{}if(!r.ok)throw Error(d.error||d.message||'Falha na API ('+r.status+')');return d}
+$('loginBtn').onclick=async()=>{ $('loginMsg').textContent='Verificando…';try{await api('login',{method:'POST',body:JSON.stringify({password:$('pass').value})});$('login').style.display='none';$('app').style.display='block';await load()}catch(e){$('loginMsg').textContent=e.message}};
+$('pass').addEventListener('keydown',e=>{if(e.key==='Enter')$('loginBtn').click()});
+async function load(){try{const d=await api('accounts');accounts=d.accounts||[];$('total').textContent=d.total??accounts.length;$('online').textContent=d.online??'—';$('banned').textContent=d.banned??accounts.filter(a=>a.banned).length;render()}catch(e){alert('Não foi possível carregar: '+e.message)}}
+function render(){const q=$('search').value.toLowerCase();const list=accounts.filter(a=>String(a.id).includes(q)||(a.name||'').toLowerCase().includes(q));$('rows').innerHTML=list.map(a=>`<tr><td>${esc(a.id)}</td><td><b>${esc(a.name)}</b></td><td>${a.created?new Date(a.created).toLocaleString('pt-BR'):'—'}</td><td>${esc(a.rank||'—')}</td><td>${a.banned?'<span style="color:#ff7185">Banida</span>':'<span class="pill">Ativa</span>'}</td><td>${a.banned?`<button class="secondary" onclick="unban('${escAttr(a.id)}')">Desbanir</button>`:`<button class="danger" onclick="openBan('${escAttr(a.id)}')">Banir</button>`}</td></tr>`).join('')||'<tr><td colspan="6" class="empty">Nenhuma conta encontrada.</td></tr>'}
+function esc(v){return String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))}function escAttr(v){return String(v).replace(/[^a-zA-Z0-9_-]/g,'')}
+$('search').oninput=render;$('refresh').onclick=load;
+window.openBan=id=>{selected=id;$('target').textContent='Conta ID '+id;$('reason').value='';$('banModal').style.display='flex'};
+$('cancel').onclick=()=>$('banModal').style.display='none';
+$('confirmBan').onclick=async()=>{if(!$('reason').value.trim())return alert('Escreva o motivo.');try{await api('ban',{method:'POST',body:JSON.stringify({id:selected,duration:$('duration').value,reason:$('reason').value.trim()})});$('banModal').style.display='none';await load()}catch(e){alert(e.message)}};
+window.unban=async id=>{if(!confirm('Remover ban da conta '+id+'?'))return;try{await api('unban',{method:'POST',body:JSON.stringify({id})});await load()}catch(e){alert(e.message)}};
+$('logout').onclick=async()=>{try{await api('logout',{method:'POST'})}catch{}$('app').style.display='none';$('login').style.display='block';$('pass').value=''};
+</script>
+</body></html>
