@@ -1,0 +1,9 @@
+{
+  "name": "dropkill-server",
+  "version": "1.0.0",
+  "description": "Servidor online do DROPKILL: contas com nome unico, matchmaking hibrido (humanos + bots = 20) e relay da partida",
+  "main": "server.js",
+  "scripts": { "start": "node server.js" },
+  "dependencies": { "ws": "^8.18.0" },
+  "license": "MIT"
+}
